@@ -1,0 +1,34 @@
+# Runtime secrets and generated config
+.env
+secrets.env
+config.yaml
+config.json
+credentials.json
+credentials.*.json
+kiro_balance_cache.json
+kiro_stats.json
+
+# Build outputs
+bin/
+target/
+dist/
+node_modules/
+*.log
+
+# Service/runtime state
+auths/*
+!auths/.gitkeep
+logs/
+conv/
+temp/
+refs/
+.local/
+
+# Tooling metadata
+.DS_Store
+.idea/
+.vscode/
+.codex/
+.claude/
+.gemini/
+

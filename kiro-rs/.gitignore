@@ -1,0 +1,13 @@
+/target
+/CLAUDE.md
+/AGENTS.md
+/config.json
+/credentials.json
+/.idea
+/test.json
+/admin-ui/node_modules/
+/admin-ui/dist/
+/admin-ui/tsconfig.tsbuildinfo
+/credentials.*
+/kiro_balance_cache.json
+/kiro_stats.json
