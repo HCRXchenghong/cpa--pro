@@ -1,32 +1,39 @@
 # cpa-pro
 
-`cpa-pro` packages CLIProxyAPI and kiro-rs together:
+`cpa-pro` 把 CLIProxyAPI 和 kiro-rs 打包在同一个项目里：
 
-- CLIProxyAPI is the public API gateway on port `8317`.
-- kiro-rs is the local Kiro OAuth + Anthropic-compatible upstream on port `8990`.
-- The installer wires CLIProxyAPI's `claude-api-key` upstream to kiro-rs automatically.
+- CLIProxyAPI 对外提供 API 网关，默认端口是 `8317`。
+- kiro-rs 负责 Kiro OAuth 登录，并在本机提供 Anthropic 兼容接口，默认端口是 `8990`。
+- 部署脚本会自动把 CLIProxyAPI 的 `claude-api-key` 上游接到本机 kiro-rs。
 
-No real credentials are committed. Runtime keys and Kiro OAuth credentials live under `/etc/cpa-pro` and `/var/lib/cpa-pro` on the deployed server.
+仓库里不会提交真实凭证。运行时生成的密钥和 Kiro OAuth 凭证会放在服务器的 `/etc/cpa-pro` 和 `/var/lib/cpa-pro` 下面。
 
-## One-command Ubuntu install
+## Ubuntu 一键部署
 
-After this repo is pushed to GitHub, run on a fresh Ubuntu server:
+在全新的 Ubuntu 服务器上运行：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_ACCOUNT/cpa-pro/main/scripts/install-ubuntu.sh \
-  | sudo CPA_PRO_REPO=https://github.com/YOUR_ACCOUNT/cpa-pro.git bash
+curl -fsSL https://raw.githubusercontent.com/HCRXchenghong/cpa--pro/main/scripts/install-ubuntu.sh \
+  | sudo CPA_PRO_REPO=https://github.com/HCRXchenghong/cpa--pro.git bash
 ```
 
-With a domain pointed at the server:
+如果域名已经解析到服务器，部署时可以带上域名：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_ACCOUNT/cpa-pro/main/scripts/install-ubuntu.sh \
-  | sudo CPA_PRO_REPO=https://github.com/YOUR_ACCOUNT/cpa-pro.git \
+curl -fsSL https://raw.githubusercontent.com/HCRXchenghong/cpa--pro/main/scripts/install-ubuntu.sh \
+  | sudo CPA_PRO_REPO=https://github.com/HCRXchenghong/cpa--pro.git \
       CPA_PRO_DOMAIN=api.example.com \
       bash
 ```
 
-This prints public URLs such as `http://api.example.com:8317` and `http://api.example.com:8990/admin`. If you put HTTPS/reverse proxy in front of the services, pass the final public URLs explicitly:
+脚本会输出类似下面的公网访问地址：
+
+```text
+CLIProxyAPI: http://api.example.com:8317
+Kiro Admin: http://api.example.com:8990/admin
+```
+
+如果前面还有 Nginx、Caddy 或其他 HTTPS 反向代理，可以直接传最终公网地址：
 
 ```bash
 sudo CPA_PRO_API_URL=https://api.example.com \
@@ -34,69 +41,69 @@ sudo CPA_PRO_API_URL=https://api.example.com \
   ./scripts/install-ubuntu.sh
 ```
 
-Or from a cloned checkout:
+如果已经克隆了仓库，也可以在仓库目录里运行：
 
 ```bash
 sudo ./scripts/install-ubuntu.sh
 ```
 
-The installer:
+部署脚本会自动完成这些事情：
 
-- installs system packages, Node.js, pnpm, Rust, Go, and Kiro CLI;
-- builds `kiro-rs` and `CLIProxyAPI` from source;
-- generates fresh API keys;
-- writes systemd services;
-- starts both services.
+- 安装系统依赖、Node.js、pnpm、Rust、Go 和 Kiro CLI。
+- 从源码构建 `kiro-rs` 和 `CLIProxyAPI`。
+- 生成新的 API 密钥。
+- 写入运行配置和 systemd 服务。
+- 启动 `cpa-pro-kiro-rs` 和 `cpa-pro-cli-proxy-api`。
 
-## Important paths
+## 重要路径
 
 ```text
-/opt/cpa-pro/app                         source/build checkout
-/etc/cpa-pro/secrets.env                 generated API keys
-/etc/cpa-pro/kiro-rs/config.json         kiro-rs config
-/etc/cpa-pro/kiro-rs/credentials.json    Kiro credentials
-/etc/cpa-pro/cli-proxy-api/config.yaml   CLIProxyAPI config
-/var/lib/cpa-pro                         service user home and OAuth storage
+/opt/cpa-pro/app                         源码和构建目录
+/etc/cpa-pro/secrets.env                 自动生成的 API 密钥
+/etc/cpa-pro/kiro-rs/config.json         kiro-rs 配置
+/etc/cpa-pro/kiro-rs/credentials.json    Kiro 凭证
+/etc/cpa-pro/cli-proxy-api/config.yaml   CLIProxyAPI 配置
+/var/lib/cpa-pro                         服务用户目录和 OAuth 状态目录
 ```
 
-## After install
+## 部署后怎么用
 
-Print generated keys:
+先查看自动生成的密钥：
 
 ```bash
 sudo cat /etc/cpa-pro/secrets.env
 ```
 
-Open the Kiro admin panel:
+打开 Kiro 管理后台：
 
 ```text
-http://SERVER_IP:8990/admin
+http://<服务器IP>:8990/admin
 ```
 
-Use `KIRO_ADMIN_KEY` from `secrets.env`.
+登录后台时使用 `secrets.env` 里的 `KIRO_ADMIN_KEY`。
 
-Click `添加新 Kiro 账号`. On a remote/headless server, open the shown official Kiro login URL in your local browser. If the browser ends at `http://localhost:3128/oauth/callback?...`, copy that full URL back into the `提交回调` box in Kiro Admin. The server will submit it to its local Kiro CLI callback listener and import the credential.
+进入后台后点击 `添加新 Kiro 账号`。如果服务器没有桌面环境，就把后台显示的官方 Kiro 登录链接复制到本地浏览器打开。登录完成后，如果浏览器停在 `http://localhost:3128/oauth/callback?...`，把这个完整回调地址复制回 Kiro 管理后台的 `提交回调` 输入框。服务器会把回调提交给本机 Kiro CLI，并导入凭证。
 
-Then use CLIProxyAPI:
+然后客户端使用 CLIProxyAPI：
 
 ```bash
-export ANTHROPIC_BASE_URL=http://SERVER_IP:8317
-export ANTHROPIC_API_KEY=<CPA_API_KEY from /etc/cpa-pro/secrets.env>
+export ANTHROPIC_BASE_URL=http://<服务器IP>:8317
+export ANTHROPIC_API_KEY=<填入 /etc/cpa-pro/secrets.env 里的 CPA_API_KEY>
 ```
 
-If you installed with `CPA_PRO_DOMAIN` or `CPA_PRO_API_URL`, use the printed `CLIProxyAPI` URL as `ANTHROPIC_BASE_URL`.
+如果部署时设置了 `CPA_PRO_DOMAIN` 或 `CPA_PRO_API_URL`，就用安装完成时输出的 `CLIProxyAPI` 地址作为 `ANTHROPIC_BASE_URL`。
 
-The internal CLIProxyAPI-to-kiro-rs upstream stays `http://127.0.0.1:8990` by design. The official Kiro OAuth callback also stays `http://localhost:3128/oauth/callback?...`; on a remote server, copy that full callback URL into the Kiro Admin `提交回调` box.
+CLIProxyAPI 到 kiro-rs 的内部上游地址会保持为 `http://127.0.0.1:8990`，这个不需要改成域名。Kiro 官方 OAuth 回调也仍然是 `http://localhost:3128/oauth/callback?...`，远程服务器场景下照样把完整回调地址复制到 Kiro 管理后台提交。
 
-CPA's built-in Gemini and Antigravity OAuth client credentials are not committed. If you need those providers, put your Google OAuth values in `/etc/cpa-pro/secrets.env` and restart `cpa-pro-cli-proxy-api`.
+CPA 内置的 Gemini 和 Antigravity OAuth 客户端凭证不会提交到仓库。如果需要使用这些供应商，把自己的 Google OAuth 值写进 `/etc/cpa-pro/secrets.env`，然后重启 `cpa-pro-cli-proxy-api`。
 
-Default model aliases include:
+默认模型别名包括：
 
 - `claude-sonnet-4-6`
 - `claude-sonnet-4-6-thinking`
 - `kiro-sonnet`
 
-## Service commands
+## 服务管理命令
 
 ```bash
 sudo systemctl status cpa-pro-kiro-rs
@@ -105,12 +112,12 @@ sudo journalctl -u cpa-pro-kiro-rs -f
 sudo journalctl -u cpa-pro-cli-proxy-api -f
 ```
 
-## Security checklist before pushing
+## 推送前安全检查
 
-Run:
+每次推送前运行：
 
 ```bash
 ./scripts/sanitize-secrets.sh
 ```
 
-It verifies that common runtime secret files and known local keys are not present in the repository.
+这个脚本会检查常见运行时配置、OAuth 回调、缓存文件和密钥，避免真实凭证被提交到仓库。
